@@ -1,5 +1,6 @@
 package org.hs.wcc.distance.api;
 
+import org.hs.wcc.config.SecurityConfig;
 import org.hs.wcc.distance.service.DistanceCalculatorService;
 import org.hs.wcc.distance.service.DistanceResult;
 import org.hs.wcc.postcode.exception.InvalidPostcodeException;
@@ -14,13 +15,17 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(DistanceController.class)
-@AutoConfigureMockMvc(addFilters = false)
-@Import(ApiExceptionHandler.class)
+@AutoConfigureMockMvc
+@Import({ApiExceptionHandler.class, SecurityConfig.class})
 class DistanceControllerTest {
+
+        private static final String TEST_USERNAME = "user123";
+        private static final String TEST_PASSWORD = "passwd";
 
     @Autowired
     private MockMvc mockMvc;
@@ -29,7 +34,15 @@ class DistanceControllerTest {
     private DistanceCalculatorService distanceCalculatorService;
 
     @Test
-    void shouldReturnDistanceResponse() throws Exception {
+    void shouldReturnUnauthorizedWithoutCredentials() throws Exception {
+        mockMvc.perform(get("/api/v1/distance")
+                        .param("from", "SW1A1AA")
+                        .param("to", "EC1A1BB"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void shouldReturnDistanceResponseForAuthenticatedUser() throws Exception {
         DistanceResult result = new DistanceResult(
                 new PostcodeLocation("SW1A1AA", 51.501009d, -0.141588d),
                 new PostcodeLocation("EC1A1BB", 51.520200d, -0.097700d),
@@ -39,6 +52,7 @@ class DistanceControllerTest {
         when(distanceCalculatorService.calculateDistance("SW1A1AA", "EC1A1BB")).thenReturn(result);
 
         mockMvc.perform(get("/api/v1/distance")
+                        .with(httpBasic(TEST_USERNAME, TEST_PASSWORD))
                         .param("from", "SW1A1AA")
                         .param("to", "EC1A1BB"))
                 .andExpect(status().isOk())
@@ -54,6 +68,7 @@ class DistanceControllerTest {
                 .thenThrow(new InvalidPostcodeException("Invalid postcode: ?"));
 
         mockMvc.perform(get("/api/v1/distance")
+                        .with(httpBasic(TEST_USERNAME, TEST_PASSWORD))
                         .param("from", "?")
                         .param("to", "EC1A1BB"))
                 .andExpect(status().isBadRequest())

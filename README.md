@@ -35,6 +35,13 @@ Public endpoint:
 
 - `GET /actuator/health`
 
+## Swagger / OpenAPI
+
+After starting the app, open:
+
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+
 ## API
 
 ### Distance endpoint
